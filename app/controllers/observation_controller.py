@@ -86,6 +86,11 @@ def update_observation(observation_id):
     if observation is None:
          return jsonify({"error": "Observation not found"}), 404
     
+    # Check if the observation's date_time is within the current quarter
+    current_quarter_start = get_current_quarter_start()
+    if observation.date_time < current_quarter_start:
+        return jsonify({"error": "Can not amend records prior to the current quarter."}), 404
+    
     # Validate and deserialize input
     schema = ObservationSchema()
     data = schema.load(request.json)
@@ -103,7 +108,7 @@ def update_observation(observation_id):
     haze = data.get('haze')
     notes = data.get('notes')
     
-    observation = ObservationService.update_observation(
+    updated_observation = ObservationService.update_observation(
         observation_id,
         date_time=date_time,
         time_zone_offset=time_zone_offset,
@@ -118,8 +123,8 @@ def update_observation(observation_id):
         haze=haze,
         notes=notes
     )
-    if observation:
-        result = GetObservationSchema().dump(observation)
+    if updated_observation:
+        result = GetObservationSchema().dump(updated_observation)
         return jsonify(result), 200
     else:
         return jsonify({"error": "Unexpected error occur"}), 404
@@ -131,3 +136,13 @@ def delete_observation(observation_id):
     if observation:
         return jsonify({"success": "Observation deleted"}), 200
     return jsonify({"error": "Observation not found"}), 404
+
+
+# Helpers
+from datetime import datetime
+
+def get_current_quarter_start():
+    current_date = datetime.now()
+    current_quarter = (current_date.month - 1) // 3 + 1
+    start_month = 3 * (current_quarter - 1) + 1
+    return datetime(current_date.year, start_month, 1)
