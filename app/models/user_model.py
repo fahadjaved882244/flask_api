@@ -16,6 +16,9 @@ class User(db.Model):
   is_email_verified = db.Column(db.Boolean, default=False)
   is_qualified = db.Column(db.Boolean, default=False)
 
+  # Establish a relationship to the Observation model
+  observations = db.relationship('Observation', back_populates='user', lazy='dynamic')
+
   def __repr__(self):
     return '<User %r>' % self.user_id
 
