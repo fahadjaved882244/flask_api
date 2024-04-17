@@ -23,9 +23,10 @@ class Observation(db.Model):
   haze = db.Column(db.Float, nullable=False)  # Haze percentage
   notes = db.Column(db.Text, nullable=True)
   
+  # Foreign key to link to the User model
   user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-  user = db.relationship("User")  # Relationship with User model
-
+  user = db.relationship('User', back_populates='observations')
+    
   def __repr__(self):
     return '<Observation %r>' % self.observation_id
 
