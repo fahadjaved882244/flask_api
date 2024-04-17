@@ -1,5 +1,4 @@
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy.exc import SQLAlchemyError
 from app.models.user_model import User
 from app import db
 
