@@ -3,6 +3,9 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
 from flask_marshmallow import Marshmallow
+from config import DevelopmentConfig
+import sys
+import pytest
 
 # Initialize extensions
 # Extensions are initialized without an app while they are bound to the app later in the factory function
@@ -11,7 +14,7 @@ jwt = JWTManager()
 migrate = Migrate()
 ma = Marshmallow()
 
-def create_app(config_class='config'):
+def create_app(config_class=DevelopmentConfig):
     # Create the Flask application
     app = Flask(__name__)
 
@@ -33,5 +36,13 @@ def create_app(config_class='config'):
     # Create database tables for our data models
     with app.app_context():
         db.create_all()
+
+    # Run tests before the server starts
+    if app.config.get('RUN_TESTS_BEFORE_SERVER', False):
+        print("Running tests before starting the server...")
+        test_results = pytest.main(['-x', 'tests'])
+        if test_results != 0:
+            print("Tests failed, stopping server startup.")
+            sys.exit(test_results)
 
     return app

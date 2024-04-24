@@ -8,49 +8,45 @@ observation_blueprint = Blueprint('observations', __name__, url_prefix='/observa
 
 @observation_blueprint.route('/', methods=['POST'])
 @jwt_required()
-def create_observation():
-   # Validate and deserialize input
-    schema = ObservationSchema()
-    data = schema.load(request.json)
+def create_observations():
+    # Validate and deserialize input
+    schema = ObservationSchema(many=True)
+    try:
+        observations_data = schema.load(request.json)
+    except Exception:
+        return jsonify({"error": "Invalid data"}), 400
     
-    date_time = data.get('date_time')
-    time_zone_offset = data.get('time_zone_offset')
-    latitude = data.get('latitude')
-    longitude = data.get('longitude')
-    land_surface_temperature = data.get('land_surface_temperature')
-    sea_surface_temperature = data.get('sea_surface_temperature')
-    humidity = data.get('humidity')
-    wind_speed = data.get('wind_speed')
-    wind_direction = data.get('wind_direction')
-    precipitation = data.get('precipitation')
-    haze = data.get('haze')
-    notes = data.get('notes')
+    results = []
+    user_email = get_jwt_identity()
+    user = UserService.get_user_by_email(user_email)
+    
+    if not user:
+        return jsonify({"error": "User not found"}), 404
 
     try:
-        user_email = get_jwt_identity()
+        for data in observations_data:
+            observation = ObservationService.create_observation(
+                user_id=user.id,
+                date_time=data['date_time'],
+                time_zone_offset=data['time_zone_offset'],
+                latitude=data['latitude'],
+                longitude=data['longitude'],
+                land_surface_temperature=data['land_surface_temperature'],
+                sea_surface_temperature=data['sea_surface_temperature'],
+                humidity=data['humidity'],
+                wind_speed=data['wind_speed'],
+                wind_direction=data['wind_direction'],
+                precipitation=data['precipitation'],
+                haze=data['haze'],
+                notes=data['notes']
+            )
+            results.append(observation)
         
-        user_id = UserService.get_user_by_email(user_email).id
+        return jsonify({'message': 'Observations stored successfully', 'ids': [obs.id for obs in results]}), 201
 
-        observation = ObservationService.create_observation(
-            user_id=user_id,
-            date_time=date_time,
-            time_zone_offset=time_zone_offset,
-            latitude=latitude,
-            longitude=longitude,
-            land_surface_temperature=land_surface_temperature,
-            sea_surface_temperature=sea_surface_temperature,
-            humidity=humidity,
-            wind_speed=wind_speed,
-            wind_direction=wind_direction,
-            precipitation=precipitation,
-            haze=haze,
-            notes=notes
-        )
-        return jsonify({'message': 'Observation stored successfully', 'id': observation.id}), 201
     except Exception as e:
-        # Catch any other unexpected errors
-        print(f"Unexpected error during store observation: {e}")
-        return jsonify({'message': 'Store observation failed due to an unexpected error'}), 500
+        print(f"Unexpected error during store observations: {e}")
+        return jsonify({'message': 'Store observations failed due to an unexpected error'}), 500
 
 
 @observation_blueprint.route('/<int:observation_id>', methods=['GET'])
@@ -95,33 +91,20 @@ def update_observation(observation_id):
     schema = ObservationSchema()
     data = schema.load(request.json)
     
-    date_time = data.get('date_time')
-    time_zone_offset = data.get('time_zone_offset')
-    latitude = data.get('latitude')
-    longitude = data.get('longitude')
-    land_surface_temperature = data.get('land_surface_temperature')
-    sea_surface_temperature = data.get('sea_surface_temperature')
-    humidity = data.get('humidity')
-    wind_speed = data.get('wind_speed')
-    wind_direction = data.get('wind_direction')
-    precipitation = data.get('precipitation')
-    haze = data.get('haze')
-    notes = data.get('notes')
-    
     updated_observation = ObservationService.update_observation(
         observation_id,
-        date_time=date_time,
-        time_zone_offset=time_zone_offset,
-        latitude=latitude,
-        longitude=longitude,
-        land_surface_temperature=land_surface_temperature,
-        sea_surface_temperature=sea_surface_temperature,
-        humidity=humidity,
-        wind_speed=wind_speed,
-        wind_direction=wind_direction,
-        precipitation=precipitation,
-        haze=haze,
-        notes=notes
+        date_time = data.get('date_time'),
+        time_zone_offset = data.get('time_zone_offset'),
+        latitude = data.get('latitude'),
+        longitude = data.get('longitude'),
+        land_surface_temperature = data.get('land_surface_temperature'),
+        sea_surface_temperature = data.get('sea_surface_temperature'),
+        humidity = data.get('humidity'),
+        wind_speed = data.get('wind_speed'),
+        wind_direction = data.get('wind_direction'),
+        precipitation = data.get('precipitation'),
+        haze = data.get('haze'),
+        notes = data.get('notes')
     )
     if updated_observation:
         result = GetObservationSchema().dump(updated_observation)
@@ -131,9 +114,26 @@ def update_observation(observation_id):
 
 
 @observation_blueprint.route('/<int:observation_id>', methods=['DELETE'])
+@jwt_required()
 def delete_observation(observation_id):
-    observation = ObservationService.delete_observation(observation_id)
-    if observation:
+    user_email = get_jwt_identity()
+    user = UserService.get_user_by_email(user_email)
+    
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+
+    observation = ObservationService.get_observations_by_user_id_and_observation_id(user_id=user.id, observation_id=observation_id)
+    if observation is None:
+         return jsonify({"error": "Observation not found"}), 404
+    
+    # Check if the observation's date_time is within the current quarter
+    current_quarter_start = get_current_quarter_start()
+    if observation.date_time < current_quarter_start:
+        return jsonify({"error": "Can not amend records prior to the current quarter."}), 404
+    
+    result = ObservationService.delete_observation(observation_id)
+    if result:
         return jsonify({"success": "Observation deleted"}), 200
     return jsonify({"error": "Observation not found"}), 404
 
