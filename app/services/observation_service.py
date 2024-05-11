@@ -43,7 +43,7 @@ class ObservationService:
       db.session.rollback()
       # Log the error as appropriate
       print(f"Error creating Observation: {e}")
-      return None
+      raise e
 
   @staticmethod
   def get_observation(observation_id):
@@ -107,9 +107,10 @@ class ObservationService:
 
 
   @staticmethod
-  def delete_observation(observation_id):
+  def delete_observation(observation_id: int) -> bool:
     observation = Observation.query.filter_by(id=observation_id).first()
     if observation:
-        db.session.delete(observation)
-        db.session.commit()
-    return observation
+      db.session.delete(observation)
+      db.session.commit()
+      return True
+    return False
