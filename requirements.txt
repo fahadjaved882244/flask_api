@@ -3,3 +3,5 @@ flask_marshmallow
 flask_sqlalchemy
 flask_migrate
 Flask-JWT-Extended
+pytest
+pytest-flask
