@@ -4,7 +4,7 @@ from app import db
 
 def test_login_user(test_client):
   """
-  Test logging in a user.
+  Intergation test for register and logging in a user.
   """
   # Clean up before the test
   existing_user = User.query.filter_by(email='user@example.com').first()
